@@ -1,3 +1,6 @@
+"""
+animate_pendulum.py
+"""
 import gym
 import numpy as np
 from matplotlib import animation
@@ -10,13 +13,13 @@ except ModuleNotFoundError:
     raise ModuleNotFoundError('Missing required DQN implementation for pyTorch')
 import torch
 
-global env 
+global env
 env = gym.make('Pendulum-v1')
 input_dim = env.observation_space.shape[0]
 output_dim=4
 n_episode=300
 max_episode=200
-batch_size=16 
+batch_size=16
 min_eps=0.00175
 hidden_dim = 90
 gamma = 0.95
@@ -24,7 +27,7 @@ gamma = 0.95
 
 Frame = collections.namedtuple('Frame', ['image', 'episode', 'penalty'])
 dqn = pendulum.DQN(input_dim=input_dim, output_dim=output_dim, hidden_dim=hidden_dim)
-try:    
+try:
     dqn.load_state_dict(torch.load('./pendulumDQN.pt')) #pendulumDQN.pt is the pyTorch saved training data
 except FileNotFoundError:
     raise FileNotFoundError('you do not have any training data in the current working directory')
@@ -38,7 +41,7 @@ def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
     ax = plt.gcf().add_subplot()
 
     plt.axis('off')
-    
+
     patch = plt.imshow(frames[0].image)
     at = ax.text(x=0.05, y=0.5, s=f"Episode: {frames[0].episode}\nPenalty: {frames[0].penalty}", fontsize=18 \
         , bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 10}, fontweight='black', fontfamily='serif')
@@ -46,7 +49,7 @@ def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
     def animate(i):
         patch.set_data(frames[i].image)
         at.set_text(s=f"Episode: {frames[i].episode}\nPenalty: {frames[i].penalty}")
-                          
+
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=100)
     anim.save(path + filename, writer='imagemagick', fps=30)
 
@@ -61,18 +64,18 @@ def play(actions:np.ndarray, getFrames:bool=False, episode:int=0):
             frames.append(Frame(env.render(mode='rgb_array'), episode, penalty))
         else:
             env.render()
-        
+
         #convert state as array of floats to Tensor
         state = torch.autograd.Variable(torch.Tensor(s.reshape(-1, input_dim)))
-        
+
         #get the q-value (expected penalty scores) from the state
         #dqn.train(mode=False)
         scores = dqn(state)
-        
+
         #get the analogue action from scores
         _, argmax = torch.max(scores.data, 1)
         a = int(argmax.numpy())
-        
+
         s2, r, done, _ = env.step(np.ndarray((1,), buffer=np.array(actions[a])))
         penalty -= round(r, )
         s = s2
@@ -85,12 +88,12 @@ def discretize_actions(n_actions, upper_bounds, lower_bounds):
     """
     Takes an observation of the environment and aliases it.
     By doing this, very similar observations can be treated
-    as the same and it reduces the state space so that the 
+    as the same and it reduces the state space so that the
     Q-table can be smaller and more easily filled.
-    
+
     Input:
     actions (int) : number of possible actions
-    
+
     Output:
     discretized (List) : discrete list of possible actions
     """
@@ -113,7 +116,7 @@ def main():
         frames += play(discrete_action_values, True, i)
     env.close()
     save_frames_as_gif(frames, filename=filename)
-    
+
 def test():
     print(discrete_action_values)
     print(play(discrete_action_values))
