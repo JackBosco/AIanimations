@@ -10,34 +10,49 @@ import matplotlib.pyplot as plt
 import collections
 import os
 
-env = gym.make('CartPole-v1')
-try:
-    Q_table = np.load('cartpoleData.npy') #cartpoleData is an npy 2d array file storing data from training
-except FileNotFoundError:
-    raise FileNotFoundError('you do not have any training data in the current working directory')
-upper_bounds = [4.8, 0.5, 0.41887903, 0.8726646259971648]
-lower_bounds = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
-buckets = (3, 3, 6, 6)
+env = gym.make('CartPole-v1', render_mode='rgb_array')
+Q_TABLE = None
+DQN = None
+
+UPPER_BOUNDS = [4.8, 0.5, 0.41887903, 0.8726646259971648]
+LOWER_BOUNDS = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
+BUCKETS = (3, 3, 6, 6)
+
+def load_qtable(path):
+    global Q_TABLE
+    try:
+        Q_TABLE = np.load(path) #cartpoleData is an npy 2d array file storing data from training
+    except FileNotFoundError:
+        raise FileNotFoundError('you do not have any training data in the current working directory')
+
+def load_dqn(model):
+    global DQN
+    DQN = model
 
 Frame = collections.namedtuple('Frame', ['image', 'action', 'reward'])
 
-def getFrames():
+def get_frames(max_episode=500):
     t = 0
     done = False
-    current_state = discretize_state(env.reset())
+    state = (env.reset())
+    state = np.array(state[0]) if len(state) != 4 else np.array(state)
     frames = []
     printAction = ['←', '→']
-    while not done:
+    while not done and t < max_episode:
         t = t+1
-        action = np.argmax(Q_table[current_state])
-        frames.append(Frame(env.render(mode='rgb_array'), printAction[int(action)], t))
-        obs, _, done, _ = env.step(action)
-        new_state = discretize_state(obs)
-        current_state = new_state
+        if Q_TABLE:
+            action = act_qtable(state)
+        elif DQN:
+            action = act_dqn(np.expand_dims(state, axis=0))
+        else:
+            raise ValueError("no qtable or dqn found. use load_dqn or load_qtable")
+        frames.append(Frame(env.render(), printAction[int(action)], t))
+        new_state, _, done, *_ = env.step(action)
+        state = np.array(new_state)
     env.close()
     return frames
 
-def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
+def save_frames_as_gif(frames, filename='gym_animation.gif'):
 
     #Mess with this to change frame size
     plt.figure(figsize=(frames[0].image.shape[1] / 72.0, frames[0].image.shape[0] / 72.0), dpi=72)
@@ -54,24 +69,22 @@ def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
         at.set_text(s=f"Action: {frames[i].action}\nReward: {frames[i].reward}")
 
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=100)
-    anim.save(path + filename, writer='imagemagick', fps=30)
+    anim.save(filename, writer='imagemagick', fps=30)
 
-def play():
-    """Runs an episode while displaying the cartpole environment."""
-    t = 0
-    done = False
-    current_state = discretize_state(env.reset())
-    penalties = 0
-    while not done:
-        env.render()
-        t = t+1
-        action = np.argmax(Q_table[current_state])
-        obs, reward, done, _ = env.step(action)
-        new_state = discretize_state(obs)
-        current_state = new_state
-    print(f"Penalties: {penalties}")
-    env.close()
-    return t
+def act_qtable(state):
+    """
+    extracts single action from qtable given state using argmax
+    requires quatble to be loaded
+    """
+    current_state = discretize_state(state)
+    return np.argmax(Q_TABLE[current_state])
+
+def act_dqn(state):
+    """
+    extracts single action from dqn given state using argmax
+    requires dqn to be loaded
+    """
+    return np.argmax(DQN(state))
 
 def discretize_state(obs):
     """
@@ -87,14 +100,14 @@ def discretize_state(obs):
     Output:
     discretized (tuple): Tuple containing 4 non-negative integers smaller
                             than n where n is the number in the same position
-                            in the buckets list.
+                            in the BUCKETS list.
     """
     discretized = list()
     for i in range(len(obs)):
-        scaling = ((obs[i] + abs(lower_bounds[i]))
-                    / (upper_bounds[i] - lower_bounds[i]))
-        new_obs = int(round((buckets[i] - 1) * scaling))
-        new_obs = min(buckets[i] - 1, max(0, new_obs))
+        scaling = ((obs[i] + abs(LOWER_BOUNDS[i]))
+                    / (UPPER_BOUNDS[i] - LOWER_BOUNDS[i]))
+        new_obs = int(round((BUCKETS[i] - 1) * scaling))
+        new_obs = min(BUCKETS[i] - 1, max(0, new_obs))
         discretized.append(new_obs)
     return tuple(discretized)
 

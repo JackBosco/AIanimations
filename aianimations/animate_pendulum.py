@@ -7,12 +7,8 @@ from matplotlib import animation
 import matplotlib.pyplot as plt
 import collections
 import os
-try:
-    import pendulum #Pendulum is an instance of DQN for pyTorch
-except ModuleNotFoundError:
-    raise ModuleNotFoundError('Missing required DQN implementation for pyTorch')
-import torch
 
+import torch
 global env
 env = gym.make('Pendulum-v1')
 input_dim = env.observation_space.shape[0]
@@ -23,16 +19,24 @@ batch_size=16
 min_eps=0.00175
 hidden_dim = 90
 gamma = 0.95
+Frame = None
+dqn = None
 
+def load():
+    global dqn, Frame
+    try:
+        import pendulum #Pendulum is an instance of DQN for pyTorch
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('Missing required DQN implementation for pyTorch')
+    dqn = pendulum.DQN(input_dim=input_dim, output_dim=output_dim, hidden_dim=hidden_dim)
+    try:
+        dqn.load_state_dict(torch.load('./pendulumDQN.pt')) #pendulumDQN.pt is the pyTorch saved training data
+    except FileNotFoundError:
+        raise FileNotFoundError('you do not have any training data in the current working directory')
 
-Frame = collections.namedtuple('Frame', ['image', 'episode', 'penalty'])
-dqn = pendulum.DQN(input_dim=input_dim, output_dim=output_dim, hidden_dim=hidden_dim)
-try:
-    dqn.load_state_dict(torch.load('./pendulumDQN.pt')) #pendulumDQN.pt is the pyTorch saved training data
-except FileNotFoundError:
-    raise FileNotFoundError('you do not have any training data in the current working directory')
+    Frame = collections.namedtuple('Frame', ['image', 'episode', 'penalty'])
 
-dqn.eval()
+    dqn.eval()
 
 def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
 
