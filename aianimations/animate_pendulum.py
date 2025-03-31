@@ -122,6 +122,7 @@ def main():
     save_frames_as_gif(frames, filename=filename)
 
 def test():
+    discrete_action_values = discretize_actions(output_dim, env.action_space.high, env.action_space.low)
     print(discrete_action_values)
     print(play(discrete_action_values))
 
