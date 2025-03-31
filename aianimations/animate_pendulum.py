@@ -106,7 +106,6 @@ def discretize_actions(n_actions, upper_bounds, lower_bounds):
         upper_bounds +((upper_bounds - lower_bounds) / n_actions) \
         , (upper_bounds - lower_bounds) / n_actions, dtype=float)
 
-discrete_action_values = discretize_actions(output_dim, env.action_space.high, env.action_space.low)
 
 def main():
     path='./'
@@ -116,6 +115,7 @@ def main():
         n += 1
         filename = 'gym_animation' + str(n) + '.gif'
     frames = []
+    discrete_action_values = discretize_actions(output_dim, env.action_space.high, env.action_space.low)
     for i in range(1,4):
         frames += play(discrete_action_values, True, i)
     env.close()
