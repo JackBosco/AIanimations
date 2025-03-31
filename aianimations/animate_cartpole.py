@@ -118,7 +118,7 @@ def main():
     while filename in os.listdir(path):
         n += 1
         filename = 'gym_animation' + str(n) + '.gif'
-    save_frames_as_gif(getFrames(), filename=filename)
+    save_frames_as_gif(get_frames(), filename=filename)
 
 if __name__ == '__main__':
     main()
